@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["72QFYA4NR2.edwardsmith.BrickLite"],
+        "components": [
+          { "/": "/unlock.html" },
+          { "/": "/u/*" }
+        ]
+      }
+    ]
+  }
+}
