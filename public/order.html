@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>Order NFC Token - BrickLite</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page-padding: clamp(16px, 2vw + 12px, 28px);
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, system-ui, sans-serif;
+      margin: 0;
+      padding: var(--page-padding);
+      background: #f5f7fb;
+      color: #0f172a;
+      line-height: 1.6;
+    }
+    .page {
+      max-width: 960px;
+      margin: 0 auto;
+      background: #fff;
+      padding: clamp(20px, 3vw + 12px, 36px);
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(15, 23, 42, 0.12);
+    }
+    h1 {
+      margin-top: 0;
+      font-size: clamp(26px, 2vw + 18px, 32px);
+      letter-spacing: -0.02em;
+    }
+    p {
+      color: #334155;
+    }
+    .card {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 18px 0 26px;
+      background: #f8fafc;
+    }
+    .card h2 {
+      margin-top: 0;
+      font-size: clamp(20px, 2vw + 12px, 24px);
+      color: #0f172a;
+    }
+    ul {
+      color: #334155;
+      line-height: 1.5;
+    }
+    .cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 14px 20px;
+      background: #0f172a;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 150ms ease, box-shadow 150ms ease;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+      width: min(360px, 100%);
+    }
+    .cta:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 32px rgba(15, 23, 42, 0.2);
+    }
+    .cta:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    .notice {
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: #fff7ed;
+      border: 1px solid #fdba74;
+      color: #9a3412;
+      margin-top: 14px;
+    }
+    .footer {
+      margin-top: 24px;
+      color: #64748b;
+      font-size: 14px;
+    }
+    a {
+      color: #0f172a;
+      font-weight: 600;
+    }
+    @media (max-width: 640px) {
+      body { padding: 14px; }
+      .page { padding: 20px; border-radius: 12px; }
+      .cta { width: 100%; }
+      .card { padding: 16px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { scroll-behavior: auto !important; }
+      .cta { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>Order a BrickLite NFC token</h1>
+    <p>We ship NFC tokens for BrickLite at cost (£5) so you can unlock the app experience quickly. Payments are handled securely by Stripe Checkout with UK-only shipping.</p>
+
+    <div class="card">
+      <h2>How checkout works</h2>
+      <ul>
+        <li>Click the button below to open a hosted Stripe Checkout page.</li>
+        <li>Only UK shipping addresses are accepted; the serverless function enforces <strong>United Kingdom (GB)</strong> shipping.</li>
+        <li>Shipping details are collected by Stripe and returned in their dashboard.</li>
+      </ul>
+    </div>
+
+    <button id="checkout-button" class="cta" type="button">
+      <span>Pay £5 &amp; ship to the UK</span>
+    </button>
+    <div id="setup-warning" class="notice" role="alert" aria-live="polite" style="display:none;"></div>
+
+    <div class="card">
+      <h2>Setup steps for maintainers</h2>
+      <ol>
+        <li>In Stripe, create a <strong>secret key</strong> (test or live) that can create Checkout Sessions.</li>
+        <li>Add the secret to Cloudflare Pages as a project secret named <code>STRIPE_SECRET_KEY</code> so only the serverless function can access it.</li>
+        <li>Deploy the Functions directory; the <code>/create-checkout-session</code> endpoint will build a £5 GBP Checkout Session with UK-only shipping and a fixed Royal Mail rate.</li>
+        <li>Optionally adjust the price or shipping rate in <code>functions/create-checkout-session.js</code> before deploying.</li>
+      </ol>
+    </div>
+
+    <div class="footer">
+      <p>If you have trouble checking out, contact us and include your postcode so we can confirm UK shipping eligibility.</p>
+      <p><a href="/index.html">Back to BrickLite links</a></p>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      const button = document.getElementById('checkout-button');
+      const warning = document.getElementById('setup-warning');
+
+      const setLoading = (isLoading) => {
+        button.disabled = isLoading;
+        button.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+        button.textContent = isLoading ? 'Redirecting to Stripe…' : 'Pay £5 & ship to the UK';
+      };
+
+      const showError = (message) => {
+        warning.textContent = message;
+        warning.style.display = 'block';
+      };
+
+      button.addEventListener('click', async () => {
+        if (!window.fetch) {
+          showError('Your browser is too old to start checkout. Please update and try again.');
+          return;
+        }
+
+        setLoading(true);
+        warning.style.display = 'none';
+
+        try {
+          const response = await fetch('/create-checkout-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          });
+
+          const data = await response.json();
+          if (!response.ok || !data?.url) {
+            throw new Error(data?.error || 'Unable to start Stripe Checkout.');
+          }
+
+          window.location.href = data.url;
+        } catch (error) {
+          showError(error.message || 'Unexpected error starting checkout.');
+          setLoading(false);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
