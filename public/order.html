@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>Order NFC Token - BrickLite</title>
+  <title>Order a Still Tag</title>
   <style>
     :root {
       color-scheme: light;
@@ -52,6 +52,27 @@
     ul {
       color: #334155;
       line-height: 1.5;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 18px 0 10px;
+    }
+    .field label {
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .field input {
+      padding: 12px 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 16px;
+      font-family: inherit;
+    }
+    .field input:focus {
+      outline: 2px solid #0f172a;
+      outline-offset: 1px;
     }
     .cta {
       display: inline-flex;
@@ -111,36 +132,32 @@
 </head>
 <body>
   <main class="page">
-    <h1>Order a BrickLite NFC token</h1>
-    <p>We ship NFC tokens for BrickLite at cost (£5) so you can unlock the app experience quickly. Payments are handled securely by Stripe Checkout with UK-only shipping.</p>
+    <h1>Order a Still tag</h1>
+    <p>Each tag costs £5 total with free Royal Mail Second Class postage so you can quickly resume your calm experience in Still. Checkout is handled securely by Stripe.</p>
 
     <div class="card">
-      <h2>How checkout works</h2>
+      <h2>How it works</h2>
       <ul>
-        <li>Click the button below to open a hosted Stripe Checkout page.</li>
-        <li>Only UK shipping addresses are accepted; the serverless function enforces <strong>United Kingdom (GB)</strong> shipping.</li>
-        <li>Shipping details are collected by Stripe and returned in their dashboard.</li>
+        <li>Tap the button below to open a secure Stripe Checkout page.</li>
+        <li>The £5 total includes your Still tag and free Royal Mail Second Class delivery.</li>
+        <li>After payment you'll get a receipt email with your order details.</li>
       </ul>
     </div>
 
+    <div class="field">
+      <label for="receipt-email">Email for your receipt</label>
+      <input id="receipt-email" name="receipt-email" type="email" autocomplete="email" required placeholder="you@example.com" />
+    </div>
+
     <button id="checkout-button" class="cta" type="button">
-      <span>Pay £5 &amp; ship to the UK</span>
+      <span>Pay £5 with free delivery</span>
     </button>
     <div id="setup-warning" class="notice" role="alert" aria-live="polite" style="display:none;"></div>
 
-    <div class="card">
-      <h2>Setup steps for maintainers</h2>
-      <ol>
-        <li>In Stripe, create a <strong>secret key</strong> (test or live) that can create Checkout Sessions.</li>
-        <li>Add the secret to Cloudflare Pages as a project secret named <code>STRIPE_SECRET_KEY</code> so only the serverless function can access it.</li>
-        <li>Deploy the Functions directory; the <code>/create-checkout-session</code> endpoint will build a £5 GBP Checkout Session with UK-only shipping and a fixed Royal Mail rate.</li>
-        <li>Optionally adjust the price or shipping rate in <code>functions/create-checkout-session.js</code> before deploying.</li>
-      </ol>
-    </div>
-
     <div class="footer">
-      <p>If you have trouble checking out, contact us and include your postcode so we can confirm UK shipping eligibility.</p>
-      <p><a href="/index.html">Back to BrickLite links</a></p>
+      <p>If you have trouble checking out, reply to your receipt email and we'll help right away.</p>
+      <p style="margin-top:16px; font-weight:600;">Still is currently available in the UK only.</p>
+      <p><a href="/index.html">Back to Still links</a></p>
     </div>
   </main>
 
@@ -148,11 +165,12 @@
     (() => {
       const button = document.getElementById('checkout-button');
       const warning = document.getElementById('setup-warning');
+      const emailInput = document.getElementById('receipt-email');
 
       const setLoading = (isLoading) => {
         button.disabled = isLoading;
         button.setAttribute('aria-busy', isLoading ? 'true' : 'false');
-        button.textContent = isLoading ? 'Redirecting to Stripe…' : 'Pay £5 & ship to the UK';
+        button.textContent = isLoading ? 'Redirecting to Stripe…' : 'Pay £5 with free delivery';
       };
 
       const showError = (message) => {
@@ -169,11 +187,18 @@
         setLoading(true);
         warning.style.display = 'none';
 
+        const email = emailInput.value.trim();
+        if (!email) {
+          showError('Please enter the email address for your receipt.');
+          setLoading(false);
+          return;
+        }
+
         try {
           const response = await fetch('/create-checkout-session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
+            body: JSON.stringify({ email })
           });
 
           const data = await response.json();
